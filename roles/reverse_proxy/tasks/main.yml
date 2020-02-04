@@ -77,6 +77,14 @@
     var: openssl_ver.stdout
   tags: [ 'debug' , 'never' ]
 
+- debug:
+    var: openssl_ver.stdout | int
+  tags: [ 'debug' , 'never' ]
+
+- debug:
+    var: openssl_ver.stdout | long
+  tags: [ 'debug' , 'never' ]
+
 # If we don't have version 1.1.1 or greater, this script will download the source for OpenSSL and reference that when building NGINX
 - name: OpenSSL version is less than 1.1.1
   copy:
