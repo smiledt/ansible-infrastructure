@@ -84,7 +84,7 @@
     force: yes
     src: build-nginx-naxsi.sh.old
     mode: 0755
-  when: openssl_ver.stdout is version('1.1.1', '<')
+  when: openssl_ver.stdout is version('1.1', '<=')
   tags: [ 'configure' ]
 
 # This script will check for the newest versions and re-build every time it is run, so we'll want to keep it on the system for future updates.
@@ -94,7 +94,7 @@
     force: yes
     src: build-nginx-naxsi.sh.new
     mode: 0755
-  when: openssl_ver.stdout is version('1.1.1', '>=')
+  when: openssl_ver.stdout is version('1.1', '>')
   tags: [ 'configure' ]
 
 - name: Run nginx upgrade script
