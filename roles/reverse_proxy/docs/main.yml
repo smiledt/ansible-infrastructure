@@ -1,0 +1,34 @@
+---
+defaults:
+  auth_ip:
+    help: TODO.
+  certbot_auto_renew:
+    help: TODO.
+  certbot_auto_renew_hour:
+    help: TODO.
+  certbot_auto_renew_minute:
+    help: TODO.
+  certbot_auto_renew_options:
+    help: TODO.
+  certbot_auto_renew_user:
+    help: TODO.
+  certbot_create_command:
+    help: TODO.
+  certbot_create_if_missing:
+    help: TODO.
+  certbot_create_method:
+    help: TODO.
+  certbot_create_standalone_stop_services:
+    help: TODO.
+  certbot_dir:
+    help: TODO.
+  certbot_install_from_source:
+    help: TODO.
+  certbot_keep_updated:
+    help: TODO.
+  certbot_repo:
+    help: TODO.
+  certbot_version:
+    help: TODO.
+  dns_zone:
+    help: TODO.

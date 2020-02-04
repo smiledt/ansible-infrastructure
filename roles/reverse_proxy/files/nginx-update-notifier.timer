@@ -1,0 +1,11 @@
+[Unit]
+Description=Check for nginx and naxsi updates
+
+[Timer]
+# Check daily at 5am
+OnCalendar=*-*-* 05:00:00
+Persistent=true
+Unit=nginx-update-notifier.service
+
+[Install]
+WantedBy=timers.target

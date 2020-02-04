@@ -1,0 +1,448 @@
+---
+# main tasks file for reverse_proxy roles
+
+# First let's install a slew of dependancies for building from source and the PageSpeed plugin, and certbot for obtaining free SSL certificates from LetsEncrypt.
+- name: Install reverse proxy tools
+  apt: 
+    name: [ 'libpcre3', 'libpcre3-dev', 'libssl-dev', 'unzip', 'make', 'libgoogle-perftools-dev',
+    'google-perftools', 'jq', 'gcc', 'git', 'zlib1g', 'zlib1g-dev', 'build-essential', 'uuid-dev', 'certbot']
+    state: present 
+  tags: [ 'packages' ]
+
+- name: Install pip on systems using versions of python previous to version 3
+  apt: 
+    name: [ 'python-pip' ]
+    state: present
+  when: ansible_python_version is not match("3.*") 
+
+- name: Install pip3 on systems using version 3 of python
+  apt: 
+    name: [ 'python3-pip' ]
+    state: present
+  when: ansible_python_version is match("3.*") 
+
+- name: Install cryptography for managing openssl certs
+  pip:
+    name: [ 'cryptography' ]
+    state: present
+  tags: [ 'packages' ]
+
+# Installing the packaged version first will set up the service in systemd so we don't have to worry about starting NGINX at boot time, and sets up a few other default files.
+- name: Install nginx 
+  apt: name=nginx state=present
+  tags: [ 'packages' ]
+
+# Tell apt it is not to install any updates, since that would be a downgrade from our source build
+- name: Hold nginx-core updates
+  dpkg_selections:
+    name: nginx-core
+    selection: hold
+  tags: [ 'packages' ]
+
+- name: Hold nginx-common updates
+  dpkg_selections:
+    name: nginx-common
+    selection: hold
+  tags: [ 'packages' ]
+
+# Also hold updates on certbot, since we will be installing that from source
+- name: Hold certbot updates
+  dpkg_selections:
+    name: certbot
+    selection: hold
+  tags: [ 'packages' ]
+
+- name: Check the installed version of nginx
+  command: nginx -v
+  register: nginx_ver
+  changed_when: false
+  failed_when: false
+  tags: [ 'configure' ]
+
+# For some reason, output from nginx is stored in stderr
+- debug:
+    var: nginx_ver.stderr
+  tags: [ 'debug', 'never' ]
+
+# First we need to check check the OpenSSL version on our system, if we are on Ubuntu 18.04 we should have 1.1.1 already, TLSv1.3 is only available with OpenSSL version 1.1.1 or higher
+# While this is a debugging task, later tasks rely on openssl_ver
+- name: Check the installed version of openssl
+  shell: openssl version
+  register: openssl_ver
+  changed_when: false
+  failed_when: false
+  tags: [ 'configure' , 'debug' ]
+
+- debug:
+    var: openssl_ver.stdout
+  tags: [ 'debug' , 'never' ]
+
+# If we don't have version 1.1.1 or greater, this script will download the source for OpenSSL and reference that when building NGINX
+- name: OpenSSL version is less than 1.1.1
+  copy:
+    dest: /usr/local/bin/build-nginx-naxsi.sh
+    force: yes
+    src: build-nginx-naxsi.sh.old
+    mode: 0755
+  when: openssl_ver.stdout is version('1.1.1', '<')
+  tags: [ 'configure' ]
+
+# This script will check for the newest versions and re-build every time it is run, so we'll want to keep it on the system for future updates.
+- name: OpenSSL version is 1.1.1 or newer
+  copy:
+    dest: /usr/local/bin/build-nginx-naxsi.sh
+    force: yes
+    src: build-nginx-naxsi.sh.new
+    mode: 0755
+  when: openssl_ver.stdout is version('1.1.1', '>=')
+  tags: [ 'configure' ]
+
+- name: Run nginx upgrade script
+  shell: bash /usr/local/bin/build-nginx-naxsi.sh
+  tags: [ 'packages' ]
+
+- name: Check the installed version of nginx again
+  shell: nginx -v
+  register: nginx_new_ver
+  changed_when: "nginx_new_ver.stderr != nginx_ver.stderr"
+  failed_when: false
+  tags: [ 'debug', 'always' ]
+- debug: # This debug task will only fire if the version has changed
+    var: nginx_new_ver.stderr
+  when: "nginx_new_ver.stderr != nginx_ver.stderr"
+  tags: [ 'debug' ]
+
+- name: Check the installed version of certbot
+  shell: apt-cache policy certbot | grep Installed
+  register: certbot_ver
+  changed_when: false
+  failed_when: false
+  tags: [ 'debug' ]
+- debug:
+    var: certbot_ver.stdout
+  tags: [ 'debug' , 'never' ]
+
+- name: Clone Certbot into configured directory.
+  git:
+    repo: "{{ certbot_repo }}"
+    dest: "{{ certbot_dir }}"
+    version: "{{ certbot_version }}"
+    update: "{{ certbot_keep_updated }}"
+    force: true
+  tags: [ 'packages' ]
+
+- name: Set Certbot script variable.
+  set_fact:
+    certbot_script: "{{ certbot_dir }}/certbot-auto"
+  tags: [ 'configure', 'always' ]
+
+- name: Ensure certbot-auto is executable.
+  file:
+    path: "{{ certbot_script }}"
+    mode: 0755
+  tags: [ 'configure' ]
+
+- name: Template out the email notification script
+  template: 
+    src: nginx-update-notifier.sh.j2
+    dest: /usr/local/bin/nginx-update-notifier.sh
+    mode: 0755
+  notify: Restart nginx update notifier
+  tags: [ 'configure' ]
+
+- name: Copy over the email notification service
+  copy:
+    src: nginx-update-notifier.service
+    dest: /etc/systemd/system/nginx-update-notifier.service
+    mode: 0755
+  notify: Restart nginx update notifier
+  tags: [ 'configure' ]
+
+- name: Copy over the email notification timer
+  copy: 
+    src: nginx-update-notifier.timer
+    dest: /etc/systemd/system/nginx-update-notifier.timer
+    mode: 0755
+  notify: Restart nginx update notifier
+  tags: [ 'configure' ]
+
+- name: Ensure the update notifier is enabled
+  service: 
+    name: nginx-update-notifier.timer
+    state: started
+    enabled: yes
+  tags: [ 'service' ]
+
+- name: Create mountpoint directory
+  file:
+    path: /var/cache/pagespeedcache
+    state: directory
+
+- name: Add the mountpoint for cache to /etc/fstab AFTER THE ANSIBLE COMMENT
+  lineinfile: 
+    dest: /etc/fstab
+    backup: yes
+    state: present
+    line: "tmpfs /var/cache/pagespeedcache tmpfs defaults,noatime,nosuid,nodev,noexec,mode=1777,size=512M 0 0"
+    insertafter: "#------------------ Ansible DO NOT EDIT PAST HERE ----------------"
+  tags: [ 'configure' ]
+  notify: Mount cache
+
+# This will notify the Mount cache handler
+- name: Flush handlers to mount the cache if necessary
+  meta: flush_handlers
+
+- name: Copy over 403 page #TODO: 403 page is not currently working
+  copy:
+    src: 403.html
+    dest: /var/www/html/403.html
+    mode: 0644
+  notify: Restart nginx
+  tags: [ 'configure' ]
+
+- name: Ensure the necessary ssl folders exist
+  file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+  - /etc/ssl/certs
+  - /etc/ssl/private
+  - /etc/ssl/csr
+
+# Generate diffie-hellman parameters 
+- name: Generate Diffie-Hellman params if none exist (this will take a LONG time)
+  openssl_dhparam:
+    path: /etc/ssl/certs/dhparam.pem
+    size: 4096
+    force: no
+  tags: [ 'configure' ]
+
+- name: Generate the dummy ssl key
+  openssl_privatekey:
+    path: /etc/ssl/private/ssl-cert-snakeoil.key
+    size: 4096
+    state: present
+    type: RSA
+    force: no
+  tags: [ 'configure' ]
+
+- name: Generate the dummy ssl signing request
+  openssl_csr:
+    path: /etc/ssl/csr/ssl-cert-snakeoil.csr
+    privatekey_path: /etc/ssl/private/ssl-cert-snakeoil.key
+    common_name: proxy01.plumbus.lab
+    country_name: US
+    organization_name: Plumbus Labs
+    state_or_province_name: Wisconsin
+    locality_name: La Crosse
+    email_address: "{{ certbot_admin_email }}"
+
+- name: Generate the dummy ssl cert
+  openssl_certificate:
+    path: /etc/ssl/certs/ssl-cert-snakeoil.pem
+    privatekey_path: /etc/ssl/private/ssl-cert-snakeoil.key
+    csr_path: /etc/ssl/csr/ssl-cert-snakeoil.csr
+    provider: selfsigned
+    force: no
+  tags: [ 'configure' ]
+
+- name: Check if the dummy ssl cert exists
+  stat:
+    path: /etc/ssl/certs/ssl-cert-snakeoil.pem
+  register: dummy_cert
+  tags: [ 'configure' ]
+- debug:
+    var: dummy_cert
+  tags: [ 'debug', 'never' ]
+
+- name: Check if the dummy ssl key exists
+  stat:
+    path: /etc/ssl/private/ssl-cert-snakeoil.key
+  register: dummy_key
+  tags: [ 'configure' ]
+- debug:
+    var: dummy_cert
+  tags: [ 'debug', 'never' ]
+
+- name: Create a new key if one doesn't exist
+  expect: 
+    command: openssl req -x509 -newkey rsa:4096 -keyout /etc/ssl/private/ssl-cert-snakeoil.key -out /etc/ssl/certs/ssl-cert-snakeoil.pem -days 365000 -nodes
+    responses:
+      Question: #TODO: replace these with variables
+        - "US"
+        - "Wisconsin"
+        - "La Crosse"
+        - "Plumbus Labs"
+        - "."
+        - "proxy01.plumbus.lab"
+        - "{{ certbot_admin_email }}"
+    echo: true    
+  when: not dummy_cert.stat.exists or not dummy_key.stat.exists
+  tags: [ 'configure' ]
+
+- name: Copy over configuration files ( 1 of 3 )
+  copy:
+    src: limit-request-methods.conf
+    mode: 0644
+    dest: /etc/nginx/snippets/limit-request-methods.conf
+    force: yes
+  notify: Restart nginx
+  tags: [ 'configure' ]
+
+- name: Copy over configuration files ( 2 of 3 )
+  copy:
+    src: pagespeed.conf
+    mode: 0644
+    dest: /etc/nginx/snippets/pagespeed.conf
+    force: yes
+  notify: Restart nginx
+  tags: [ 'configure' ]
+
+- name: Copy over configuration files ( 3 of 3 )
+  copy:
+    src: ssl-params.conf
+    mode: 0644
+    dest: /etc/nginx/snippets/ssl-params.conf
+    force: yes
+  notify: Restart nginx
+  tags: [ 'configure' ]
+
+- name: Copy over main nginx configuration file
+  copy:
+    src: nginx.conf
+    mode: 0644
+    dest: /etc/nginx/nginx.conf
+    force: yes
+  notify: Restart nginx
+  tags: [ 'configure' ]
+
+- name: Template out the authentication paramaters
+  template: 
+    src: auth-params.conf.j2
+    dest: /etc/nginx/snippets/auth-params.conf
+    mode: 0644
+    force: yes
+  notify: Restart nginx
+  tags: [ 'configure' ]
+
+- name: Run a nginx test
+  command: nginx -t
+  register: nginx_test
+  changed_when: false
+  failed_when: false
+  tags: [ 'debug' ]
+- debug: 
+    var: nginx_test.stderr
+  tags: [ 'debug' ]
+
+- name: Template out sites-available sites
+  template: 
+    src: sites-available.j2
+    dest: /etc/nginx/sites-available/{{ item.key }}
+    mode: 0644
+    force: yes
+  with_dict: "{{ sites }}"
+  notify: Restart nginx
+  tags: [ 'configure' ]
+
+- name: Template out the default nginx page
+  template:
+    src: default.j2
+    mode: 0644
+    dest: /etc/nginx/sites-available/{{ dns_zone }}
+    force: yes
+  notify: Restart nginx
+  tags: [ 'configure' ]
+
+- name: Create the naxsi-rules directory
+  file: 
+    path: /etc/nginx/naxsi-rules
+    state: directory
+    
+- name: Copy over naxsi-rules
+  copy: 
+    src: naxsi-rules-template
+    dest: /etc/nginx/naxsi-rules/{{ item.key }}.rules
+    mode: 0644
+  with_dict: "{{ sites }}"
+  notify: Restart nginx
+  tags: [ 'configure' ]
+
+# Get active sites to scrub out ones that are not being used
+- name: Get active sites
+  shell: ls -1 /etc/nginx/sites-enabled
+  register: active
+  changed_when: "active.stdout_lines != sites.keys()"
+  tags: [ 'configure' ]
+
+- name: De-activate unwanted nginx sites
+  file: path=/etc/nginx/sites-enabled/{{ item }} state=absent
+  with_items: "{{ active.stdout_lines }}"
+  when: item not in sites
+  notify: Restart nginx
+  tags: [ 'configure' ]
+
+- name: Ensure nginx started
+  service: name=nginx state=started enabled=yes
+  tags: [ 'service' ]
+  
+- name: Activate nginx site
+  file: src=/etc/nginx/sites-available/{{ item.key }} dest=/etc/nginx/sites-enabled/{{ item.key }} state=link
+  with_dict: "{{ sites }}"
+  notify: Restart nginx
+  tags: [ 'configure' ]
+
+# Now the sites need certificates 
+# This is a very lazy, temporary way of implementing this
+- include_tasks: create-cert-standalone.yml
+  with_dict: "{{ sites }}"
+  when:
+    - certbot_create_if_missing
+    - certbot_create_method == 'standalone'
+  loop_control:
+    loop_var: site_item
+
+# Create the cron job to update certs
+- import_tasks: renew-cron.yml
+  when: certbot_auto_renew
+
+- name: Restrict private sites to the LAN
+  blockinfile: 
+    path: /etc/nginx/sites-available/{{ item.key }}
+    insertafter: '^\s*location \/ {.*'
+    state: present
+    block: |2
+            allow 172.16.1.0/24;
+            deny all; 
+  when: not item.value.public
+  with_dict: "{{ sites }}"
+  notify: Restart nginx
+
+- name: Add auth string to location blocks
+  blockinfile:
+    path: /etc/nginx/sites-available/{{ item.key }}
+    insertafter: '^\s*location \/ {.*'
+    state: present
+    block: |1
+        auth_request /auth-{{ item.value.organizr_group }}; 
+            location /api { # We know that {{ item.key }}'s api-endpoint is /api, so we are gonna open that up.
+                auth_request off;
+                proxy_pass http://{{ item.value.backend_ip }}/api;
+                }
+  when: item.value.organizr_group is defined
+  with_dict: "{{ sites }}"
+  notify: Restart nginx
+
+- name: Copy over non-generic sites
+  copy: 
+    src: "{{ spec_site_path }}"
+    dest: /etc/nginx/sites-available/
+    force: yes
+  notify: Restart nginx
+
+- name: Uncomment default server Strict-Transport-Security Header
+  replace: 
+    path: /etc/nginx/sites-available/{{ dns_zone }}
+    regexp: '^\s*#\s*add_header Strict-Transport-Security "max-age\=31536000; preload; includeSubdomains" always;'
+    replace: '    add_header Strict-Transport-Security "max-age=31536000; preload; includeSubdomains" always;'
+  notify: Restart nginx

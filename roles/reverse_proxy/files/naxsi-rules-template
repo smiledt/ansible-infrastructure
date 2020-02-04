@@ -1,0 +1,13 @@
+LearningMode;
+SecRulesEnabled;
+DeniedUrl "/403.html";
+
+## check rules
+CheckRule "$SQL >= 4" BLOCK;
+CheckRule "$RFI >= 4" BLOCK;
+CheckRule "$TRAVERSAL >= 2" BLOCK;
+CheckRule "$EVADE >= 2" BLOCK;
+CheckRule "$XSS >= 4" BLOCK;
+
+## white list
+# e.g. BasicRule wl:1007 "mz:$URL:/index.html|$BODY_VAR:message|URL";

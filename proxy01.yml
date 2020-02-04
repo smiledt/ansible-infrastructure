@@ -1,0 +1,7 @@
+---
+# Playbook for the first reverse proxy server
+
+- hosts: proxy
+  become: true
+  roles:
+    - { role: reverse_proxy, sites: "{{ proxy01_backend }}", spec_site_path: "playbook_files/proxy01/" }

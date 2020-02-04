@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+
+# move previous build to backup if it exists, overwriting previous backup
+if [[ -d "/usr/local/src/nginx" ]]; then
+  if [[ -d "/usr/local/src/nginx-old" ]]; then
+    rm -rf /usr/local/src/nginx-old
+  fi
+  mv /usr/local/src/nginx /usr/local/src/nginx-old
+fi
+# delete previous nginx config backup if it exists
+if [[ -d "/usr/local/src/nginx-conf" ]]; then
+  rm -rf /usr/local/src/nginx-conf
+fi
+# backup nginx config just in case
+mkdir /usr/local/src/nginx-conf
+cp -a /etc/nginx/* /usr/local/src/nginx-conf/
+# create new build directory and cd to it
+mkdir /usr/local/src/nginx
+cd /usr/local/src/nginx
+# # get source for openssl 1.1.1 (tls 1.3 compatibility)
+git clone https://github.com/openssl/openssl.git
+cd openssl
+git checkout OpenSSL_1_1_1-stable
+cd /usr/local/src/nginx
+# get versions
+latestNginx=$(curl -s http://hg.nginx.org/nginx/atom-tags |
+grep "<title>release-" | sort --version-sort | tail -1 |
+sed 's/<title>release-//g' | sed 's/<\/title>//g' | sed 's/^ *//g')
+latestNaxsi=$(curl -s https://api.github.com/repos/nbs-system/naxsi/releases |
+  jq -r .[].tag_name | grep -v rc | head -1)
+latestPagespeed=$(curl -s https://api.github.com/repos/apache/incubator-pagespeed-ngx/tags |
+  jq -r .[].name | grep stable | head -1)
+# get source files for pagespeed nginx, and naxsi
+wget http://nginx.org/download/nginx-`echo $latestNginx`.tar.gz
+wget https://github.com/nbs-system/naxsi/archive/${latestNaxsi}.tar.gz
+wget https://github.com/apache/incubator-pagespeed-ngx/archive/${latestPagespeed}.tar.gz
+tar xzf nginx-`echo $latestNginx`.tar.gz
+tar xzf ${latestNaxsi}.tar.gz
+tar xzf ${latestPagespeed}.tar.gz
+# prepare pagespeed
+nps_dir=$(find . -name "*pagespeed-ngx-*" -type d)
+cd "$nps_dir"
+NPS_RELEASE_NUMBER=${latestPagespeed/beta/}
+NPS_RELEASE_NUMBER=${latestPagespeed/stable/}
+psol_url=https://dl.google.com/dl/page-speed/psol/${NPS_RELEASE_NUMBER}.tar.gz
+[ -e scripts/format_binary_url.sh ] && psol_url=$(scripts/format_binary_url.sh PSOL_BINARY_URL)
+wget ${psol_url}
+tar xzf $(basename ${psol_url})
+# build and install
+cd /usr/local/src/nginx
+cd nginx-`echo $latestNginx`
+./configure --conf-path=/etc/nginx/nginx.conf \
+  --add-module=../naxsi-${latestNaxsi}/naxsi_src/ \
+  --add-module=../$nps_dir \
+  --error-log-path=/var/log/nginx/error.log \
+  --http-client-body-temp-path=/var/lib/nginx/body \
+  --http-fastcgi-temp-path=/var/lib/nginx/fastcgi \
+  --http-log-path=/var/log/nginx/access.log \
+  --http-proxy-temp-path=/var/lib/nginx/proxy \
+  --lock-path=/var/lock/nginx.lock \
+  --pid-path=/var/run/nginx.pid \
+  --with-http_auth_request_module \
+  --with-http_ssl_module \
+  --with-http_v2_module \
+  --with-stream \
+  --with-stream_realip_module \
+  --with-stream_ssl_module \
+  --without-mail_pop3_module \
+  --without-mail_smtp_module \
+  --without-mail_imap_module \
+  --without-http_uwsgi_module \
+  --without-http_scgi_module \
+  --prefix=/usr \
+  --with-openssl=/usr/local/src/nginx/openssl
+make
+make install
+# backup naxsi core rules and download latest core rules
+cd /etc/nginx
+mv /etc/nginx/naxsi_core.rules /etc/nginx/naxsi_core.rules.bak
+wget -q https://raw.githubusercontent.com/nbs-system/naxsi/master/naxsi_config/naxsi_core.rules
+# do nginx config test and restart nginx if passed
+check="$(/usr/sbin/nginx -t 2>&1 | grep success | sed 's/.*conf //g')"
+if [[ $check == "test is successful" ]];then
+  systemctl restart nginx
+  sleep 5
+  systemctl status nginx
+else
+  echo "nginx config test failed!!!"
+fi
+exit 0

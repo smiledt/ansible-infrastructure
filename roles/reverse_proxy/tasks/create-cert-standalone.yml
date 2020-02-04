@@ -1,0 +1,96 @@
+---
+# A task file to create certificates for the sites enabled in the reverse_proxy role
+- debug:
+    var: site_item.value.server_name
+
+- name: Check if certificate already exists.
+  stat:
+    path: /etc/letsencrypt/live/{{ site_item.value.server_fqdn }}/cert.pem
+  register: letsencrypt_cert
+
+- debug: 
+    var: letsencrypt_cert.stat.exists
+
+# These will only happen if a certificate has NOT already been generated
+- name: Comment/uncomment lines in the site conf file to allow for cert generation (1 of 4)
+  replace: 
+    path: /etc/nginx/sites-available/{{ site_item.key }}
+    regexp: '^#\s*ssl_certificate /etc/ssl/certs/ssl-cert-snakeoil.pem;'
+    replace: "    ssl_certificate /etc/ssl/certs/ssl-cert-snakeoil.pem;"
+  when: not letsencrypt_cert.stat.exists
+
+- name: Comment/uncomment lines in the site conf file to allow for cert generation (2 of 4)
+  replace: 
+    path: /etc/nginx/sites-available/{{ site_item.key }}
+    regexp: '^#\s*ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;'
+    replace: "    ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;"
+  when: not letsencrypt_cert.stat.exists
+
+- name: Comment/uncomment lines in the site conf file to allow for cert generation (3 of 4)
+  replace: 
+    path: /etc/nginx/sites-available/{{ site_item.key }}
+    regexp: '^\s*ssl_certificate /etc/letsencrypt/live/{{ site_item.value.server_fqdn }}/fullchain.pem;'
+    replace: "    # ssl_certificate /etc/letsencrypt/live/{{ site_item.value.server_fqdn }}/fullchain.pem;"
+  when: not letsencrypt_cert.stat.exists
+
+- name: Comment/uncomment lines in the site conf file to allow for cert generation (4 of 4)
+  replace: 
+    path: /etc/nginx/sites-available/{{ site_item.key }}
+    regexp: '^\s*ssl_certificate_key /etc/letsencrypt/live/{{ site_item.value.server_fqdn }}/privkey.pem;'
+    replace: "    # ssl_certificate_key /etc/letsencrypt/live/{{ site_item.value.server_fqdn }}/privkey.pem;"
+  when: not letsencrypt_cert.stat.exists
+
+- name: Stop services to allow certbot to generate a cert.
+  service:
+    name: "{{ item }}"
+    state: stopped
+  when: not letsencrypt_cert.stat.exists
+  with_items: "{{ certbot_create_standalone_stop_services }}"
+
+- name: Generate new certificate if one doesn't exist.
+  shell: "{{ certbot_create_command }}"
+  when: not letsencrypt_cert.stat.exists
+
+- name: Comment/uncomment lines in the site conf file to allow for cert use (1 of 4)
+  replace: 
+    path: /etc/nginx/sites-available/{{ site_item.key }}
+    regexp: '^\s*ssl_certificate /etc/ssl/certs/ssl-cert-snakeoil.pem;'
+    replace: "    # ssl_certificate /etc/ssl/certs/ssl-cert-snakeoil.pem;"
+
+- name: Comment/uncomment lines in the site conf file to allow for cert use (2 of 4)
+  replace: 
+    path: /etc/nginx/sites-available/{{ site_item.key }}
+    regexp: '^\s*ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;'
+    replace: "    # ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;"
+
+- name: Comment/uncomment lines in the site conf file to allow for cert use (3 of 4)
+  replace: 
+    path: /etc/nginx/sites-available/{{ site_item.key }}
+    regexp: '^\s*#\s*ssl_certificate /etc/letsencrypt/live/{{ site_item.value.server_fqdn }}/fullchain.pem;'
+    replace: "    ssl_certificate /etc/letsencrypt/live/{{ site_item.value.server_fqdn }}/fullchain.pem;"
+
+- name: Comment/uncomment lines in the site conf file to allow for cert use (4 of 4)
+  replace: 
+    path: /etc/nginx/sites-available/{{ site_item.key }}
+    regexp: '^\s*#\s*ssl_certificate_key /etc/letsencrypt/live/{{ site_item.value.server_fqdn }}/privkey.pem;'
+    replace: "    ssl_certificate_key /etc/letsencrypt/live/{{ site_item.value.server_fqdn }}/privkey.pem;"
+
+- name: Add the local DNS record
+  win_dns_record:
+    name: "{{ site_item.value.server_name }}"
+    type: "A"
+    value: "{{ ansible_default_ipv4.address }}"
+    zone: "{{ dns_zone }}"
+    state: present
+  delegate_to: dc01
+  become_user: smiledt
+  tags: [ 'configure' ]
+
+# Starts all the services back up IF they had to be stopped to generate a certificate
+- name: Start services after cert has been generated.
+  service:
+    name: "{{ item }}"
+    state: started
+  when: not letsencrypt_cert.stat.exists
+  with_items: "{{ certbot_create_standalone_stop_services }}"
+

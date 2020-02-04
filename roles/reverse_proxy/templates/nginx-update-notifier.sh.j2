@@ -1,0 +1,28 @@
+#!/bin/bash
+
+emailTo="{{ certbot_admin_email }}"
+
+latestNginx=$(curl -s http://hg.nginx.org/nginx/atom-tags |
+grep "<title>release-" | sort --version-sort | tail -1 |
+sed 's/<title>release-//g' | sed 's/<\/title>//g' | sed 's/^ *//g')
+latestNaxsi=$(curl -s https://api.github.com/repos/nbs-system/naxsi/releases | \
+  jq -r .[].tag_name | grep -v rc | head -1)
+currentNginx="$(/usr/sbin/nginx -v 2>&1 | sed 's/.*nginx\///g')"
+currentNaxsi="$(/usr/sbin/nginx -V 2>&1 | grep 'naxsi' | \
+  sed 's/.*naxsi-//g' | sed 's/\/.*//g')"
+versionCheck="$(printf "$latestNginx\n$currentNginx" | sort -V | tail -n1)"
+if [[ "$versionCheck" != "$currentNginx" ]] ||
+  [[ "$latestNaxsi" != "$currentNaxsi" ]]; then
+  echo -e \
+  "Use build-nginx-naxsi.sh to update:
+  NGINX: $currentNginx -> $latestNginx
+  NAXSI: $currentNaxsi -> $latestNaxsi" | \
+  mail -s "NGINX/NAXSI Update Available" $emailTo
+else
+  echo -e \
+  "NGINX and NAXSI are up to date:
+  NGINX: $currentNginx -> $latestNginx
+  NAXSI: $currentNaxsi -> $latestNaxsi"
+fi
+
+exit 0

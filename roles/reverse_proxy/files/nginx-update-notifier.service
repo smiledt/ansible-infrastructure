@@ -1,0 +1,6 @@
+[Unit]
+Description=Check for nginx and naxsi updates
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/nginx-update-notifier.sh

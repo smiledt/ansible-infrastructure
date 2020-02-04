@@ -1,0 +1,37 @@
+---
+# defaults file for reverse_proxy
+
+# Certbot auto-renew cron job configuration (for certificate renewals).
+certbot_auto_renew: true
+certbot_auto_renew_user: "{{ mgmt_user }}"
+certbot_auto_renew_hour: 3
+certbot_auto_renew_minute: 30
+certbot_auto_renew_options: "--quiet --no-self-upgrade"
+
+# Parameters used when creating new Certbot certs.
+certbot_create_if_missing: true
+certbot_create_method: standalone
+  
+certbot_create_command: >-
+  {{ certbot_script }} certonly --standalone --noninteractive --agree-tos
+  --email {{ site_item.value.email | default(certbot_admin_email) }}
+  -d {{ site_item.value.server_fqdn }}
+
+certbot_create_standalone_stop_services:
+  - nginx
+  # - apache               These services are not running 
+  # - varnish              on my proxy in my environment
+
+# To install from source (on older OSes or if you need a specific or newer
+# version of Certbot), set this variable to `yes` and configure other options.
+certbot_install_from_source: true
+certbot_repo: https://github.com/certbot/certbot.git
+certbot_version: master
+certbot_keep_updated: true
+
+# Where to put Certbot when installing from source.
+certbot_dir: /opt/certbot
+
+# The zone for DNS
+dns_zone:
+auth_ip:

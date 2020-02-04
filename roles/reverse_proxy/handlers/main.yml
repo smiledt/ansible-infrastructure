@@ -1,0 +1,16 @@
+---
+# handlers file for reverse_proxy
+- name: Restart nginx
+  service: name=nginx state=restarted
+
+- name: Restart nginx update notifier
+  service: name=nginx-update-notifier.timer state=restarted
+
+- name: Mount cache
+  command: mount -a
+  notify: Set cache permissions
+
+- name: Set cache permissions # This is currently not used. TODO: Verify that it can be removed
+  command: chown www-data. /var/cache/pagespeedcache
+ 
+

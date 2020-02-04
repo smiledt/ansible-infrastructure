@@ -1,0 +1,90 @@
+################################################################################################################
+#////////////////////////////////////////////////SERVER BLOCK\\\\\\\\\\\\\\\\\\\\\\\\\#
+################################################################################################################
+# REDIRECT TRAFFIC FROM www.{{ dns_zone }} TO https://{{ dns_zone }}
+server {
+    listen 80;
+    listen 443 ssl http2;
+    server_name www.{{ dns_zone }};
+    return 301 https://{{ dns_zone }}$request_uri;
+}
+# REDIRECT HTTP TRAFFIC TO https://{{ dns_zone }}
+server {
+    listen 80;
+    server_name {{ dns_zone }};
+    return 301 https://$server_name$request_uri;
+}
+
+################################################################################################################
+#////////////////////////////////////////////////MAIN SERVER BLOCK\\\\\\\\\\\\\\\\\\\\\\#
+################################################################################################################
+
+server {
+    listen 443 ssl http2 default_server;
+    server_name {{ dns_zone }};
+
+    ## READ THE COMMENT ON add_header X-Frame-Options AND add_header Content-Security-Policy IF YOU USE THIS ON A SUBDOMAIN YOU WANT TO IFRAME!
+    
+    # Certificate stuff, will need to get commented out/changed once there's a certificate
+    ssl_certificate /etc/ssl/certs/ssl-cert-snakeoil.pem;
+    ssl_certificate_key /etc/ssl/private/ssl-cert-snakeoil.key;
+    # ssl_certificate /etc/letsencrypt/live/{{ dns_zone }}/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/{{ dns_zone }}/privkey.pem;
+    
+    ## Strong Security recommended settings per cipherli.st
+    include /etc/nginx/snippets/ssl-params.conf;
+
+    # add_header Strict-Transport-Security "max-age=31536000; preload; includeSubdomains" always;
+    add_header X-Frame-Options SAMEORIGIN;
+    add_header X-Robots-Tag none; #SET THIS TO index IF YOU WANT GOOGLE TO INDEX YOU SITE!
+    add_header Content-Security-Policy "frame-ancestors https://*.$server_name https://$server_name"; # Add your domains you want to enable iframing on. Use sub-strong-ssl.conf on subdomains you want to iframe.
+    add_header Referrer-Policy "strict-origin-when-cross-origin";
+    
+    # add_header Feature-Policy "geolocation none;midi none;notifications none;push none;sync-xhr none;microphone none;camera none;magnetometer none;gyroscope none;speaker self;vibrate none;fullscreen self;payment none;";
+    # FEATURE POLICY: READ MORE HERE: https://scotthelme.co.uk/a-new-security-header-feature-policy/
+
+    proxy_cookie_path / "/; HTTPOnly; Secure"; ##NOTE: This may cause issues with unifi. Remove HTTPOnly; or create another ssl config for unifi.
+    # more_set_headers "Server: Classified";
+    # more_clear_headers 'X-Powered-By';
+    
+    # Organizr V2 error pages
+    error_page 401 https:/{{ dns_zone }}/?error=$status&return=$scheme://$server_name$request_uri;
+    error_page 400 402 403 404 405 408 502 503 504  https://{{ dns_zone }}/?error=$status;
+    proxy_intercept_errors on; #For custom Organizr error pages. This may give you issues with the /plex location. Just add a proxy_intercept_errors off; in the location block"
+    error_page 500 https://{{ dns_zone }}/?error=401&return=$scheme://$server_name$request_uri;
+    
+    include /etc/nginx/snippets/pagespeed.conf;
+ 
+    # Organizr
+    location / {
+       include /etc/nginx/snippets/limit-request-methods.conf;
+       include /etc/nginx/naxsi-rules/{{dns_zone}}.rules;
+       proxy_hide_header X-Powered-By;
+       proxy_pass_header Authorization;
+       proxy_pass http://{{auth_ip}};
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header X-Forwarded-Host $host;
+       proxy_set_header X-Forwarded-Proto $scheme;
+       proxy_http_version 1.1;
+       proxy_set_header Connection "";
+       proxy_buffering off;
+       client_max_body_size 0;
+       proxy_read_timeout 36000s;
+       proxy_redirect off;
+    }
+
+    # letsencrypt validation
+    location '/.well-known/acme-challenge' {
+        default_type "text/plain";
+        root /var/www/html;
+    }
+
+    # 403 redirect for NAXSI rejections
+    location '/403.html' {
+        default_type "text/html";
+        root /var/www/html;
+    }
+
+}
