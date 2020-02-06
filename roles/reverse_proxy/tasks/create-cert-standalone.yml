@@ -83,7 +83,6 @@
     zone: "{{ dns_zone }}"
     state: present
   delegate_to: dc01
-# become: yes
   become_user: "{{ dns_admin_user }}"
   tags: [ 'configure' ]
 
