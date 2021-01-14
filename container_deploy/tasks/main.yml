@@ -1,0 +1,12 @@
+---
+# tasks file for container_deploy
+
+- name: Template out the docker-compose file.
+  template:
+    src: "{{ docker-compose_template }}"
+    dest:
+    owner:
+    group:
+    mode: 0755
+
+  

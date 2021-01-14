@@ -1,0 +1,10 @@
+---
+# connects an Ubuntu vm to the main Media share of my homelab.
+- name: Connect the vm to the Media share on Truenas
+  hosts: nfs_client_media
+  become: true
+  vars:
+    nfs_mounts:
+      - { mnt_path: "/mnt/media", nfs_host: "truenas.plumbus.lab", share_path: "/mnt/Media" }
+  roles:
+  - role: nfs_client

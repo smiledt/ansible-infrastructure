@@ -1,0 +1,20 @@
+---
+# tasks file for nfs_client
+
+- name: Install nfs-common for client nfs connections.
+  apt:
+    name: nfs-common
+    state: present
+    update_cache: yes
+    cache_valid_time: 86400
+
+- name: Mount the NFS share on the client.
+  mount:
+    fstype: nfs
+    opts: defaults
+    dump: 0
+    passno: 0
+    state: mounted
+    src: "{{ item.nfs_host }}:{{ item.share_path }}"
+    path: "{{ item.mnt_path }}"
+  with_items: "{{ nfs_mounts }}"

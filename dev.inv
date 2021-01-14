@@ -2,3 +2,10 @@
 
 [proxy]
 proxy01
+
+[nfs_client_media]
+testvm01
+testvm02
+
+[docker]
+testvm02

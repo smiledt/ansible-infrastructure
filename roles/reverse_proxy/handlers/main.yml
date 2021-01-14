@@ -12,5 +12,3 @@
 
 - name: Set cache permissions # This is currently not used. TODO: Verify that it can be removed
   command: chown www-data. /var/cache/pagespeedcache
- 
-
