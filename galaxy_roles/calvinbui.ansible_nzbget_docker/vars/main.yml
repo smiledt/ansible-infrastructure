@@ -1,0 +1,6 @@
+---
+
+nzbget_environment_variables:
+  PUID: "1000"
+  PGUID: "1000"
+  TZ: America/Chicago

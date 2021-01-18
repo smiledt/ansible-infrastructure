@@ -1,0 +1,16 @@
+---
+
+htpasswd_users:
+  - name: janedoe
+    password: '9s36?;fyNp'
+    owner: root
+    group: www-data
+    mode: 0640
+    path: /etc/nginx/passwdfile
+  - name: foobar
+    state: absent
+    path: /etc/nginx/passwdfile
+  - name: alex
+    password: oedu2eGh
+    crypt_scheme: md5_crypt
+    path: /etc/nginx/passwdfile

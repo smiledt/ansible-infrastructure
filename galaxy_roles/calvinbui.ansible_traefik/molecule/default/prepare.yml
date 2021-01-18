@@ -1,0 +1,9 @@
+---
+- name: Prepare
+  hosts: all
+  become: true
+  vars:
+    pip_install_packages:
+      - name: docker
+  roles:
+    - calvinbui.ansible_pip

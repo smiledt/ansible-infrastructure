@@ -1,0 +1,15 @@
+---
+- name: Configure Nginx to use LetsEncrypt Certificates.
+  hosts: nginx
+  become: true
+  vars_files: nginx/defaults/main.yml
+  vars:
+    - sites: "{{ proxy01_backend }}"
+  tasks:
+    - name: Import the https_conf.yml tasks.
+      include_role:
+        name: nginx
+        tasks_from: https_conf.yml
+      with_dict: "{{ sites }}"
+      loop_control:
+        loop_var: site_item

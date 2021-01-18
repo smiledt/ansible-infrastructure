@@ -1,0 +1,50 @@
+---
+- name: Deploy Nginx.
+  hosts: nginx
+  become: true
+  roles:
+  - { role: nginx, sites: "{{ proxy01_backend }}" }
+
+# As this isn't strictly nginx configuration, I've decided to split this from the nginx role. It still uses those variables though.
+- name: Set DNS Records. 
+  hosts: nginx
+  become: true
+  vars_files:
+    - nginx/vars/vault
+    - nginx/defaults/main.yml
+  vars:
+    - sites: "{{ proxy01_backend }}"
+  tasks:
+    - name: Add the local DNS record.
+      win_dns_record:
+        name: "{{ item.value.server_name }}"
+        type: "A"
+        value: "{{ ansible_default_ipv4.address }}"
+        zone: "{{ dns_zone }}"
+        state: present
+      with_dict: "{{ sites }}"
+      delegate_to: dc01
+      become_user: "{{ dns_admin_user }}"
+
+- name: Deploy certificates using LetsEncrypt.
+  hosts: nginx
+  become: true
+  vars_files:
+    - nginx/defaults/main.yml
+  roles:
+    - { role: galaxy_roles/geerlingguy.certbot, sites: "{{ proxy01_backend }}" }
+
+- name: Configure Nginx to use LetsEncrypt Certificates.
+  hosts: nginx
+  become: true
+  vars_files: nginx/defaults/main.yml
+  vars:
+    - sites: "{{ proxy01_backend }}"
+  tasks:
+    - name: Import the https_conf.yml tasks.
+      include_role:
+        name: nginx
+        tasks_from: https_conf.yml
+      with_dict: "{{ sites }}"
+      loop_control:
+        loop_var: site_item

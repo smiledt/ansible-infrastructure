@@ -1,5 +1,13 @@
 # A very basic development inventory for the infrastructure projects
 
+[windows]
+dc01
+[windows:vars]
+# varables that will apply to all windows hosts - needed for nginx role dns records
+ansible_user=smiledt
+ansible_password="{{ smiledt_pass }}"
+ansible_connection=ssh
+ansible_shell_type=cmd
 [proxy]
 proxy01
 
@@ -8,4 +16,15 @@ testvm01
 testvm02
 
 [docker]
-testvm02
+testvm01
+testvm04
+organizr
+
+[nzbget]
+testvm01
+
+[nginx]
+proxy01
+
+[org]
+organizr

@@ -5,3 +5,4 @@
 # from galaxy
 - src: geerlingguy.docker
 - src: geerlingguy.pip
+- src: community.general

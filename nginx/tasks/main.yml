@@ -1,0 +1,68 @@
+---
+# tasks file for nginx
+
+# First, let's make sure nginx is installed
+- name: Install nginx. 
+  apt:
+    name: [ nginx ]
+    state: present
+    update_cache: yes
+    cache_valid_time: 86400
+
+- name: Run a nginx test.
+  command: nginx -t
+  register: nginx_test
+  changed_when: false
+  failed_when: false
+  tags: [ 'debug' ]
+- debug: 
+    var: nginx_test.stderr
+  tags: [ 'debug' ]
+
+- name: Ensure the log directories exist.
+  file:
+    path: "/var/log/nginx/{{ item.value.server_fqdn }}"
+    state: directory
+    mode: '0644'
+  with_dict: "{{ sites }}"
+
+- name: Template out sites-available sites.
+  template: 
+    src: sites-available.j2
+    dest: /etc/nginx/sites-available/{{ item.key }}
+    mode: 0644
+    force: yes
+  with_dict: "{{ sites }}"
+  notify: Restart nginx
+  when: item.value.server_fqdn is not match dns_zone
+
+- name: Template out the default nginx page.
+  template:
+    src: default.j2
+    mode: 0644
+    dest: /etc/nginx/sites-available/{{ dns_zone }}
+    force: yes
+  with_dict: "{{ sites }}"
+  notify: Restart nginx
+  when: item.value.server_fqdn is match dns_zone
+
+# Get active sites to scrub out ones that are not being used
+- name: Get active sites.
+  shell: ls -1 /etc/nginx/sites-enabled
+  register: active
+  changed_when: "active.stdout_lines != sites.keys()"
+
+- name: De-activate unwanted nginx sites.
+  file: path=/etc/nginx/sites-enabled/{{ item }} state=absent
+  with_items: "{{ active.stdout_lines }}"
+  when: item not in sites
+  notify: Restart nginx
+
+- name: Ensure nginx started
+  service: name=nginx state=started enabled=yes
+  tags: [ 'service' ]
+
+- name: Activate nginx site.
+  file: src=/etc/nginx/sites-available/{{ item.key }} dest=/etc/nginx/sites-enabled/{{ item.key }} state=link
+  with_dict: "{{ sites }}"
+  notify: Restart nginx

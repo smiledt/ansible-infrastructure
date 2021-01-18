@@ -1,0 +1,8 @@
+---
+- name: Deploy certificates using LetsEncrypt.
+  hosts: nginx
+  become: true
+  vars_files:
+    - nginx/defaults/main.yml
+  roles:
+    - { role: galaxy_roles/geerlingguy.certbot, sites: "{{ proxy01_backend }}" }

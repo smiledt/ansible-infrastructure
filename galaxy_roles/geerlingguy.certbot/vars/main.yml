@@ -1,0 +1,13 @@
+# Parameters used when creating new Certbot certs.
+certbot_create_if_missing: true
+certbot_create_method: standalone
+certbot_admin_email: dereksmilees@gmail.com
+certbot_certs: []
+  # - domains:
+  #   - example1.com
+  #   - example2.com
+
+certbot_create_command: >-
+  {{ certbot_script }} certonly --standalone --noninteractive --agree-tos
+  --email {{ cert_item.value.email | default(certbot_admin_email) }}
+  -d {{ cert_item.value.server_fqdn }}

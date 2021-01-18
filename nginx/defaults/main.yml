@@ -1,0 +1,27 @@
+---
+# defaults file for nginx
+
+proxy01_backend:
+  guacamole:
+    server_name: guac
+    backend_ip: '192.168.1.42:8080'
+    public: true
+    organizr_group: 2 #Power User
+    server_fqdn: "guac.plumbus.icu"
+  # plumbus.icu:
+  #   server_name: www
+  #   backend_ip: 192.168.1.51:80
+  #   public: true
+  #   server_fqdn: plumbus.icu
+  plumbus.icu:
+    server_name: www
+    backend_ip: '192.168.1.51:80'
+    public: true
+    server_fqdn: "plumbus.icu"
+    specializations:
+      - spec_line: "listen 443 ssl http2;"
+        insert_before: "server_name www.plumbus.icu;"
+
+dns_zone: "plumbus.icu"
+auth_ip: '192.168.1.51:80'
+auth_lan: '192.168.1.0/24'
