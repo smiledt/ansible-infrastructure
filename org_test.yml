@@ -1,0 +1,13 @@
+---
+- name: Prep the docker hosts.
+  hosts: docker
+  become: true
+  roles:
+  - role: docker_prep
+  - role: galaxy_roles/calvinbui.ansible_docker_network
+
+- name: Deploy Organizr web interface.
+  hosts: organizr
+  become: true
+  roles:
+  - role: galaxy_roles/calvinbui.ansible_organizr_docker

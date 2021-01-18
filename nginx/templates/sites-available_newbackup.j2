@@ -1,0 +1,28 @@
+# nginx sites file for {{ item.key }}
+
+# Http server block 
+server {
+    listen 80;
+    server_name {{ item.value.server_name }}.{{ dns_zone }};
+    access_log /var/log/nginx/{{ item.value.server_name }}.{{ dns_zone }}/access.log;
+    error_log /var/log/nginx/{{ item.value.server_name }}.{{ dns_zone }}/error.log;
+  #  return 301 https://{{ item.value.server_name }}.{{ dns_zone }}$request_uri;
+
+    location / {
+       proxy_hide_header X-Powered-By;
+     # proxy_pass_header Authorization;
+       proxy_pass http://{{ item.value.backend_ip }};
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header X-Forwarded-Host $host;
+       proxy_set_header X-Forwarded-Proto $scheme;
+    #   proxy_http_version 1.1;
+    #   proxy_set_header Connection "";
+       proxy_buffering off;
+       client_max_body_size 0;
+       proxy_read_timeout 36000s;
+    #   proxy_redirect http://{{ item.value.backend_ip }} http://{{ item.value.server_name }}.{{ dns_zone }};
+    }
+}
+

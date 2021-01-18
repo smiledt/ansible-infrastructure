@@ -1,0 +1,6 @@
+---
+
+- name: htpasswd - add users to password file
+  htpasswd:
+    "{{ item }}"
+  loop: "{{ htpasswd_users }}"

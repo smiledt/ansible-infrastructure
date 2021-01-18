@@ -1,0 +1,41 @@
+---
+# This playbook preps several docker hosts and deploys containers using Calvin
+# Bui's well-written ansible-galaxy roles. Thanks Calvin! https://calvin.me/
+
+- name: Prep the docker hosts.
+  hosts: docker
+  become: true
+  roles:
+  - role: docker_prep
+  - role: galaxy_roles/calvinbui.ansible_docker_network
+
+
+- name: Deploy NZBGet Container.
+  hosts: nzbget
+  become: true
+  roles:
+  - role: galaxy_roles/calvinbui.ansible_nzbget_docker
+
+- name: Deploy the RR Containers.
+  hosts: rr
+  roles:
+  - role: galaxy_roles/calvinbui.ansible_sonar_docker
+  - role: radarr_docker
+  - role: galaxy_roles/calvinbui.ansible_nzbhydra_docker
+
+- name: Deploy Organizr web interface.
+  hosts: organizr
+  roles:
+  - role: galaxy_roles/calvinbui.ansible_oganizr_docker
+
+- name: Deploy Portainer web interface.
+  hosts: portainer
+  roles:
+  - role: galaxy_roles/calvinbui.ansible_portainer
+
+- src: calvinbui.ansible_traefik
+- src: calvinbui.ansible_jdownloader_docker
+- src: calvinbui.ansible_qbittorrent_docker
+- src: calvinbui.ansible_htpasswd
+- src: calvinbui.ansible_watchtower
+- src: calvinbui.ansible_datadog

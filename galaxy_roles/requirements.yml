@@ -1,0 +1,41 @@
+---
+- src: calvinbui.ansible_docker_network
+  version: '1.2.0'
+
+- src: calvinbui.ansible_htpasswd
+  version: '2.1.0'
+
+- src: calvinbui.ansible_traefik
+  version: '1.1.1'
+
+- src: calvinbui.ansible_nzbget_docker
+  version: '2.0.2'
+
+- src: calvinbui.ansible_qbittorrent_docker
+  version: '1.0.3'
+
+- src: calvinbui.ansible_sonarr_docker
+  version: '1.0.1'
+
+- src: calvinbui.ansible_couchpotato_docker
+  version: '1.0.3'
+
+- src: calvinbui.ansible_nzbhydra_docker
+  version: '2.0.1'
+
+- src: calvinbui.ansible_jdownloader_docker
+  version: '1.0.2'
+
+- src: calvinbui.ansible_organizr_docker
+  version: '1.0.0'
+
+- src: calvinbui.ansible_portainer
+  version: '1.0.1'
+
+- src: calvinbui.ansible_watchtower
+  version: '1.0.0'
+
+- src: calvinbui.ansible_datadog
+  version: '1.0.2'
+
+- src: geerlingguy.certbot

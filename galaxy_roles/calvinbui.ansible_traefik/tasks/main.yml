@@ -1,0 +1,35 @@
+---
+
+- name: Create traefik config directory
+  file:
+    path: "{{ traefik_config_directory }}"
+    state: directory
+
+- name: Create acme.json
+  file:
+    path: "{{ traefik_config_acme_file }}"
+    state: touch
+    mode: '0600'
+    modification_time: "preserve"
+    access_time: "preserve"
+
+- name: Copy traefik config
+  template:
+    src: "{{ traefik_config_template }}"
+    dest: "{{ traefik_config_directory }}/traefik.toml"
+  notify: Restart Traefik
+
+- name: Set Docker container parameters
+  set_fact:
+    traefik_container_parameters:
+      name: "{{ traefik_name }}"
+      image: "{{ traefik_image }}"
+      state: started
+      published_ports: "{{ traefik_ports }}"
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+        - "{{ traefik_config_directory }}/traefik.toml:/traefik.toml"
+        - "{{ traefik_config_acme_file }}:/acme.json"
+
+- name: Create traefik container
+  docker_container: "{{ traefik_container_parameters | combine(traefik_docker_additional_options) }}"

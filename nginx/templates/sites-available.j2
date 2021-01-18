@@ -1,0 +1,58 @@
+# nginx sites file for {{ item.key }}
+
+# Https server block
+# server {
+#     server_name {{ item.value.server_fqdn }};
+
+#     access_log /var/log/nginx/{{ item.value.server_fqdn }}/access.log;
+#     error_log /var/log/nginx/{{ item.value.server_fqdn }}/error.log;
+    
+#     listen [::]:443 ssl;
+#     listen 443 ssl;
+#     ssl_certificate /etc/letsencrypt/live/{{ item.value.server_fqdn }}/fullchain.pem;
+#     ssl_certificate_key /etc/letsencrypt/live/{{ item.value.server_fqdn }}/privkey.pem;
+#     include /etc/letsencrypt/options-ssl-nginx.conf;
+#     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+#     add_header Strict-Transport-Security "max-age=31536000" always;
+#     ssl_trusted_certificate /etc/letsencrypt/live/{{ item.value.server_fqdn }}/chain.pem;
+#     ssl_stapling_verify on;
+
+#     location / {
+#       proxy_pass http://{{ item.value.backend_ip }};
+#       proxy_redirect http://{{ item.value.backend_ip }} http://{{ item.value.server_fqdn }};
+#       proxy_buffering off;
+#       proxy_http_version 1.1;
+#       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#       proxy_set_header Upgrade $http_upgrade;
+#       proxy_set_header Connection $http_connection;
+#     }
+# }
+
+# Http server block 
+server {
+    listen 80;
+    listen [::]:80;
+
+    server_name {{ item.value.server_fqdn }};
+    access_log /var/log/nginx/{{ item.value.server_fqdn }}/access.log;
+    error_log /var/log/nginx/{{ item.value.server_fqdn }}/error.log;
+
+    location / {
+       proxy_hide_header X-Powered-By;
+     # proxy_pass_header Authorization;
+       proxy_pass http://{{ item.value.backend_ip }};
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header X-Forwarded-Host $host;
+       proxy_set_header X-Forwarded-Proto $scheme;
+       proxy_http_version 1.1;
+       proxy_set_header Connection "";
+       proxy_buffering off;
+       client_max_body_size 0;
+       proxy_read_timeout 36000s;
+       proxy_redirect http://{{ item.value.backend_ip }} http://{{ item.value.server_fqdn }};
+    }
+}
+
