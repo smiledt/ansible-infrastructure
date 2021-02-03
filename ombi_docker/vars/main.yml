@@ -1,0 +1,15 @@
+---
+# vars file for ombi_docker
+
+ombi_name: ombi
+ombi_image: linuxserver/ombi
+ombi_ports:
+  - 3579:3579
+ombi_config_directory: /opt/ombi                                                                  
+ombi_environment_variables:
+  PUID: "1000"
+  PGID: "1000"
+  TZ: America/Chicago
+
+ombi_docker_additional_options:
+  restart_policy: unless-stopped

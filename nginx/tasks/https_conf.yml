@@ -7,39 +7,12 @@
   register: letsencrypt_cert
 
 - debug:
-    var: letsencrypt_cert.stat.exists
-
-- name: Restrict private sites to the LAN.
-  blockinfile: 
-    path: /etc/nginx/sites-available/{{ site_item.key }}
-    insertafter: '^\s*location \/ {.*'  # TODO: This needs to be looked at 
-    state: present
-    block: |2
-            allow {{ auth_lan }};
-            deny all; 
-  when: not site_item.value.public and letsencrypt_cert.stat.exists
-  notify: Restart nginx
-
-# Organizr authorization, this is not set up yet. 
-# - name: Add auth string to location blocks
-#   blockinfile:
-#     path: /etc/nginx/sites-available/{{ item.key }}
-#     insertafter: '^\s*location \/ {.*'
-#     state: present
-#     block: |1
-#         auth_request /auth-{{ item.value.organizr_group }}; 
-#             location /api { # We know that {{ item.key }}'s api-endpoint is /api, so we are gonna open that up.
-#                 auth_request off;
-#                 proxy_pass http://{{ item.value.backend_ip }}/api;
-#                 }
-#   when: item.value.organizr_group is defined
-#   with_dict: "{{ sites }}"
-#   notify: Restart nginx
+    var: letsencrypt_cert
 
 - name: Uncomment HTTPS 443 server block.
   replace:
     path: /etc/nginx/sites-available/{{ site_item.key }}
-    regexp: '^#(.*)'  # This should match to anything starting with # ;
+    regexp: '^#(.*)'  # This should match to anything starting with #
     replace: '\1'
     after: '# Https server block'
     before: '# Http server block'
@@ -56,6 +29,28 @@
               return 301 https://$host$request_uri; }
   when: letsencrypt_cert.stat.exists      
   notify: Restart nginx
+
+- name: Restrict private sites to the LAN.
+  lineinfile: 
+    path: /etc/nginx/sites-available/{{ site_item.key }}
+    insertafter: '^\s*location \/ {.*'
+    firstmatch: yes
+    state: present
+    line: "include /etc/nginx/private-sites.conf;"
+  when: not site_item.value.public and letsencrypt_cert.stat.exists
+  notify: Restart nginx
+
+# Organizr authentication
+# - name: Add auth string to location block.
+#   lineinfile:
+#     path: /etc/nginx/sites-available/{{ item.key }}
+#     insertafter: '^\s*location \/ {.*'
+#     state: present
+#     firstmatch: yes
+#     line: "include /etc/nginx/organizr-auth.conf;"
+#   when: item.value.org_auth is defined and use_organizr_authentication
+#   with_dict: "{{ sites }}"
+#   notify: Restart nginx
 
 - name: Add other specialized lines into the nginx config file
   lineinfile:

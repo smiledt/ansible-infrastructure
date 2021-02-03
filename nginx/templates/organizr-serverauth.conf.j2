@@ -1,0 +1,6 @@
+auth_request /auth-{{ site_item.value.org_level }};
+location ~ /auth-(.*) {
+    proxy_pass http://{{ organizr_ip }}:{{ organizr_port }}/api/v2/auth?group=$1;
+    proxy_pass_request_body off;
+    proxy_set_header Content-Length "";
+}

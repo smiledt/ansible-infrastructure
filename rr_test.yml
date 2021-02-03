@@ -1,0 +1,44 @@
+---
+# This playbook is for testing the configuration of several docker hosts.
+
+# - name: Connect the vm to the Media share on Truenas
+#   hosts: nfs_client_media
+#   become: true
+#   vars:
+#     nfs_mounts:
+#       - { mnt_path: "/mnt/media", nfs_host: "truenas.plumbus.lab", share_path: "/mnt/Media" }
+#   roles:
+#   - role: nfs_client
+
+# - name: Install docker and docker-compose on docker hosts.
+#   hosts: docker
+#   become: true
+#   vars:
+#     pip_install_packages:
+#       - name: docker
+
+#   roles:
+#     - geerlingguy.pip
+#     - geerlingguy.docker
+
+# - name: Prep the docker hosts.
+#   hosts: docker
+#   become: true
+#   roles:
+#   - role: docker_prep
+#   - role: galaxy_roles/calvinbui.ansible_docker_network
+
+- name: Deploy the RR Containers.
+  hosts: rr
+  become: true
+  roles:
+  - role: galaxy_roles/calvinbui.ansible_sonarr_docker
+  - role: radarr_docker
+  - role: galaxy_roles/calvinbui.ansible_nzbhydra_docker
+  - role: ombi_docker
+
+- name: Deploy NZBGet Container.
+  hosts: nzbget
+  become: true
+  roles:
+  - role: galaxy_roles/calvinbui.ansible_nzbget_docker

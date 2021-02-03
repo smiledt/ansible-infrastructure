@@ -19,6 +19,12 @@
     var: nginx_test.stderr
   tags: [ 'debug' ]
 
+- name: Template out the private-sites.conf
+  template:
+    src: private-sites.conf.j2
+    mode: 0644
+    dest: /etc/nginx/private-sites.conf
+
 - name: Ensure the log directories exist.
   file:
     path: "/var/log/nginx/{{ item.value.server_fqdn }}"
