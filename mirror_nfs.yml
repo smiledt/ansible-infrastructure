@@ -1,0 +1,10 @@
+---
+# connects an Ubuntu vm to the main Mirror share of my homelab.
+- name: Connect the vm to the Media share on Truenas
+  hosts: nfs_client_mirror
+  become: true
+  vars:
+    nfs_mounts:
+      - { mnt_path: "/mnt/mirror", nfs_host: "truenas.plumbus.lab", share_path: "/mnt/Mirror_4TB" }
+  roles:
+  - role: nfs_client

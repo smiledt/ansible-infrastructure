@@ -17,6 +17,7 @@
       volumes:
         - "{{ qbittorrent_config_directory }}:/config"
         - "{{ qbittorrent_download_directory }}:/downloads"
+        - "{{ qbittorrent_torrent_directory }}:/monitored"
       env: "{{ qbittorrent_environment_variables }}"
 
 - name: Create qBittorrent container

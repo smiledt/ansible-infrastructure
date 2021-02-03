@@ -1,0 +1,68 @@
+---
+# Tertiary tasks file for nginx role, to be run after LetsEncrypt certs have been issued and https has been enabled.
+
+# First have to template out the ServerAuth config files
+# Can I initialize an array?
+# - name: Template out ServerAuth.conf files for includes.
+#   template:
+#     src: organizr-serverauth.j2
+#     dest: /etc/nginx/organizr-levels/organizr-serverauth-{{ item }}
+#     mode: 0644
+#   with_item: [ 0, 1, 2, 3, 4 ] # No idea if this will work, currently the different built in levels in Org
+- name: Specify the site that is being modified.
+  debug:
+    msg: Current site is {{ site_item.key }}
+
+- name: Ensure the serverauth subdirectory exists
+  file:
+    path: "/etc/nginx/organizr-serverauth"
+    state: directory
+    mode: '0755'
+
+- name: Template out specific Organizr ServerAuth conf files for includes, if enabled.
+  template:
+    src: organizr-serverauth.conf.j2
+    dest: /etc/nginx/organizr-serverauth/{{ site_item.key }}-auth.conf
+    mode: 0644
+  when: site_item.value.org_level is defined
+
+- name: Add the authentication exceptions, if needed. 
+  blockinfile: 
+    path: /etc/nginx/organizr-serverauth/{{ site_item.key }}-auth.conf
+    block: |
+      location /{{ item }} { # We know that one of {{ site_item.key }}'s endpoints is /{{ item }}, so we are gonna open that up.
+        auth_request off; # The line that actually opens it up
+        proxy_pass http://{{ site_item.value.backend_ip }}/{{ item }}; # We need to tell nginx where to send the request
+      }
+    marker: "# {mark} Opens up the endpoint for {{ item }}"
+  with_items: "{{ site_item.value.auth_allow }}"
+  when: site_item.value.auth_allow is defined and site_item.value.org_level is defined
+
+# Organizr Proxy Auth
+- name: Copy over out the organizr-proxyauth.conf
+  copy:
+    src: organizr-proxyauth.conf
+    dest: /etc/nginx/organizr-proxyauth.conf
+    mode: 0644
+  when: site_item.value.proxy_auth is defined and site_item.value.proxy_auth
+
+- name: Add Proxy auth string to location block.
+  lineinfile:
+    path: /etc/nginx/sites-available/{{ site_item.key }}
+    insertafter: '^\s*location \/ {.*'
+    state: present
+    firstmatch: yes
+    line: "include /etc/nginx/organizr-proxyauth.conf;"
+  when: site_item.value.proxy_auth is defined and site_item.value.proxy_auth
+  notify: Restart nginx
+
+- name: Set ServerAuth parameters if enabled. 
+  lineinfile:
+    path: /etc/nginx/sites-available/{{ site_item.key }}
+    insertafter: '^\s*location \/ {.*'
+    firstmatch: yes
+    state: present
+    line: "include /etc/nginx/organizr-serverauth/{{ site_item.key }}-auth.conf;"
+  when: site_item.value.org_level is defined
+  notify: Restart nginx
+

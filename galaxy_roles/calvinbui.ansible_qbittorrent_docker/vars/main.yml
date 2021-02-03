@@ -7,8 +7,9 @@ qbittorrent_ports:
   - 6881:6881
   - 6881:6881/udp
   - "{{ qbittorrent_webui_port }}:{{ qbittorrent_webui_port }}"
-qbittorrent_config_directory: /tmp/qbittorrent/config
-qbittorrent_download_directory: /tmp/qbittorrent/downloads
+qbittorrent_config_directory: /opt/qbittorrent/config
+qbittorrent_download_directory: /mnt/mirror/qbittorrent/downloads
+qbittorrent_torrent_directory: /mnt/mirror/qbittorrent/torrents
 qbittorrent_environment_variables:
   PUID: "1000"
   PGID: "1000"

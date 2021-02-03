@@ -18,6 +18,7 @@
 
 - name: Deploy the RR Containers.
   hosts: rr
+  become: true
   roles:
   - role: galaxy_roles/calvinbui.ansible_sonar_docker
   - role: radarr_docker

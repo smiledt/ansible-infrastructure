@@ -1,0 +1,9 @@
+---
+# Testing seed containers 
+
+- name: Deploy the Seed Containers.
+  hosts: seedbox
+  become: true
+  roles:
+  - role: galaxy_roles/calvinbui.ansible_jdownloader_docker
+  - role: galaxy_roles/calvinbui.ansible_qbittorrent_docker

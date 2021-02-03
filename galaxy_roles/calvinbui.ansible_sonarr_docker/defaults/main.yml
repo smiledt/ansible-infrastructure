@@ -11,7 +11,7 @@ sonarr_download_directory: /tmp/downloads
 sonarr_environment_variables:
   PUID: "1000"
   PGID: "1000"
-  TZ: Sydney/Australia
+  TZ: America/Chicago
 
 sonarr_docker_additional_options:
   restart_policy: unless-stopped

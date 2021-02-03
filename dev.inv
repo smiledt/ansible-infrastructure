@@ -12,19 +12,28 @@ ansible_shell_type=cmd
 proxy01
 
 [nfs_client_media]
-testvm01
-testvm02
+rr
+get
+classi
+seed
+
+[nfs_client_mirror]
+seed
 
 [docker]
-testvm01
-testvm04
 organizr
+rr
+get
+seed
 
 [nzbget]
-testvm01
+get
 
 [nginx]
 proxy01
 
 [org]
 organizr
+
+[seedbox]
+seed

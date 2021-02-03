@@ -4,8 +4,11 @@
   file:
     path: "{{ item }}"
     state: directory
+    mode: 0777
   loop:
     - "{{ sonarr_config_directory }}"
+    - "{{ sonarr_tv_directory }}"
+    - "{{ sonarr_download_directory }}"
 
 - name: Set Docker container parameters
   set_fact:
@@ -29,10 +32,10 @@
     port: "{{ sonarr_ports[0].split(':')[0] }}"
     host: "{{ sonarr_container.container.NetworkSettings.IPAddress }}"
 
-- name: Configure config.xml
-  xml:
-    path: "{{ sonarr_config_directory }}/config.xml"
-    xpath: "/Config/{{ item.key }}"
-    value: "{{ item.value | string }}"
-  loop: "{{ sonarr_config | dict2items }}"
-  notify: Restart Sonarr
+# - name: Configure config.xml
+#   xml:
+#     path: "{{ sonarr_config_directory }}/config.xml"
+#     xpath: "/Config/{{ item.key }}"
+#     value: "{{ item.value | string }}"
+#   loop: "{{ sonarr_config | dict2items }}"
+#   notify: Restart Sonarr

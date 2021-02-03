@@ -6,13 +6,7 @@ proxy01_backend:
     server_name: guac
     backend_ip: '192.168.1.42:8080'
     public: true
-    organizr_group: 2 #Power User
     server_fqdn: "guac.plumbus.icu"
-  # plumbus.icu:
-  #   server_name: www
-  #   backend_ip: 192.168.1.51:80
-  #   public: true
-  #   server_fqdn: plumbus.icu
   plumbus.icu:
     server_name: www
     backend_ip: '192.168.1.51:80'
@@ -21,7 +15,72 @@ proxy01_backend:
     specializations:
       - spec_line: "listen 443 ssl http2;"
         insert_before: "server_name www.plumbus.icu;"
+  ombi:
+    server_name: ombi
+    backend_ip: '192.168.1.32:3579'
+    public: true
+    org_level: 4
+    auth_allow:
+      - api
+    server_fqdn: "ombi.plumbus.icu"
+  radarr:
+    server_name: radarr
+    backend_ip: '192.168.1.32:7878'
+    public: true
+    org_level: 4
+    auth_allow:
+      - api
+    server_fqdn: "radarr.plumbus.icu"
+  sonarr:
+    server_name: sonarr
+    backend_ip: '192.168.1.32:8989'
+    public: true
+    server_fqdn: "sonarr.plumbus.icu"
+    org_level: 4
+    auth_allow:
+      - api
+  nzbget:
+    server_name: get
+    backend_ip: '192.168.1.31:6789'
+    public: true
+    server_fqdn: "get.plumbus.icu"
+    org_level: 2
+    auth_allow:
+      - xmlrpc
+      - jsonrpc
+      - jsonprpc
+  nzbhydra:
+    server_name: hydra
+    backend_ip: '192.168.1.32:5076'
+    public: true
+    server_fqdn: "hydra.plumbus.icu"
+    proxy_auth: true
+    org_level: 2
+  qbittorrent:
+    server_name: qbit
+    backend_ip: '192.168.1.36:8080'
+    public: false
+    server_fqdn: "qbit.plumbus.icu"
+  jdownloader:
+    server_name: jdown
+    backend_ip: '192.168.1.36:5800'
+    public: false
+    server_fqdn: "jdown.plumbus.icu"
+  tautulli:
+    server_name: tautulli
+    backend_ip: '192.168.1.50:8181'
+    public: true
+    org_level: 4
+    auth_allow:
+      - api
+      - newsletter
+      - image
+    server_fqdn: "tautulli.plumbus.icu"
 
 dns_zone: "plumbus.icu"
 auth_ip: '192.168.1.51:80'
 auth_lan: '192.168.1.0/24'
+use_organizr_authentication: true
+organizr_usergroup: 4
+organizr_ip: 192.168.1.51
+organizr_port: 80

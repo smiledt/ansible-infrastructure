@@ -4,9 +4,11 @@
   file:
     path: "{{ item }}"
     state: directory
+    mode: 0777
   loop:
     - "{{ nzbget_config_directory }}"
     - "{{ nzbget_download_directory }}"
+    - "{{ nzbget_complete_directory }}"
 
 - name: Set Docker container parameters
   set_fact:
@@ -17,7 +19,8 @@
       published_ports: "{{ nzbget_ports }}"
       volumes:
         - "{{ nzbget_config_directory }}:/config"
-        - "{{ nzbget_download_directory }}:/downloads"
+        - "{{ nzbget_download_directory }}:/tmp"
+        - "{{ nzbget_complete_directory }}:/downloads"
       env: "{{ nzbget_environment_variables }}"
 
 - name: Create NZBGet container

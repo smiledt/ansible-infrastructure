@@ -1,0 +1,16 @@
+---
+- name: Configure Nginx to use Organizr ServerAuth.
+  hosts: nginx
+  become: true
+  vars_files: nginx/defaults/main.yml
+  vars:
+    - sites: "{{ proxy01_backend }}"
+  tasks:
+    - name: Import the organizr_conf.yml tasks.
+      include_role:
+        name: nginx
+        tasks_from: organizr_conf.yml
+      with_dict: "{{ sites }}"
+      loop_control:
+        loop_var: site_item
+      when: use_organizr_authentication
