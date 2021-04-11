@@ -1,31 +1,46 @@
-Role Name
+NFS_Client
 =========
 
-A brief description of the role goes here.
+A small role to mount NFS shares on my Linux virtual machines. 
 
 Requirements
 ------------
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+You need to have a NFS share on the network, and the ability to mount it via dns or IP address. 
 
 Role Variables
 --------------
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+Required variables are listed here, along with default values (specific to my environment, see fefaults/main.yml).
+
+    mnt_path: /mnt/storage
+
+This is the local directory on the host. If this directory does not exist, it will be created during runtime.
+
+    nfs_host: nas.domain.com
+
+This is the address of the NFS server. This can either be a resolvable FQDN or an IP address.
+
+    share_path: /mnt/1tb_mirror
+
+This is the exported NFS share on the server.  
 
 Dependencies
 ------------
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+None.
 
 Example Playbook
 ----------------
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
-
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
+- name: Connect the vm to the Media share on my TrueNAS vm.
+  hosts: nfs_client_media
+  become: true
+  vars:
+    nfs_mounts:
+      - { mnt_path: "/mnt/media", nfs_host: "truenas.plumbus.lab", share_path: "/mnt/Media" }
+  roles:
+  - role: nfs_client
 
 License
 -------

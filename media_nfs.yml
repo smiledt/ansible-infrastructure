@@ -1,5 +1,5 @@
 ---
-# connects an Ubuntu vm to the main Media share of my homelab.
+# Connects an Ubuntu vm to the main Media share of my homelab.
 - name: Connect the vm to the Media share on Truenas
   hosts: nfs_client_media
   become: true

@@ -4,7 +4,7 @@ organizr_name: organizr
 organizr_image: organizr/organizr
 organizr_ports:
   - 80:80
-organizr_config_directory: "/home/organizr"
+organizr_config_directory: "/opt/organizr"
 organizr_environment_variables:
   PUID: "1000"
   PGID: "1000"
