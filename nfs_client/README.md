@@ -50,4 +50,5 @@ BSD
 Author Information
 ------------------
 
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+Derek Smiley - Aspiring Systems Administrator/Ansible Automation Engineer
+https://www.linkedin.com/in/derek-smiley/
