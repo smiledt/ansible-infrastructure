@@ -33,14 +33,14 @@ None.
 Example Playbook
 ----------------
 
-- name: Connect the vm to the Media share on my TrueNAS vm.
-  hosts: nfs_client_media
-  become: true
-  vars:
-    nfs_mounts:
-      - { mnt_path: "/mnt/media", nfs_host: "truenas.plumbus.lab", share_path: "/mnt/Media" }
-  roles:
-  - role: nfs_client
+    - name: Connect the vm to the Media share on my TrueNAS vm.
+      hosts: nfs_client_media
+      become: true
+      vars:
+        nfs_mounts:
+          - { mnt_path: "/mnt/media", nfs_host: "truenas.plumbus.lab", share_path: "/mnt/Media" }
+      roles:
+      - role: nfs_client
 
 License
 -------
